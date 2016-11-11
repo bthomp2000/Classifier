@@ -150,7 +150,7 @@ def printGraphics():
 				rect.draw(win)
 
 				odds = log(featurelikelyhood1)-log(featurelikelyhood2)
-				print "odds: ",odds, " = ",featurelikelyhood1,"/",featurelikelyhood2
+				# print "odds: ",odds, " = ",featurelikelyhood1,"/",featurelikelyhood2
 				if(odds>5.0):
 					odds=5.0
 				elif(odds<-5.0):
