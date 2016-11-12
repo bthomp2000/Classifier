@@ -1,7 +1,7 @@
 from copy import deepcopy
 from math import log
 
-K=0.2
+K=1.0
 #1 is minimum wage, -1 is life partners
 fisher_train_negative_dict = {} #[word count, doc count]
 fisher_train_positive_dict = {} #[word count, doc count]
@@ -22,9 +22,9 @@ def readInput():
 				document = document.split(" ")
 				label = int(document[0])
 				if label==-1:
-					fisher_count_negative[1]+=1
+					fisher_count_negative[1]+=1.0
 				else:
-					fisher_count_positive[1]+=1
+					fisher_count_positive[1]+=1.0
 				for i in range(1,len(document)):
 					word = document[i].split(":")[0]
 					count = int(document[i].split(":")[1])
@@ -46,9 +46,9 @@ def readInput():
 				document = document.split(" ")
 				label = int(document[0])
 				if label==-1:
-					movie_count_negative[1]+=1
+					movie_count_negative[1]+=1.0
 				else:
-					movie_count_positive[1]+=1
+					movie_count_positive[1]+=1.0
 				for i in range(1,len(document)):
 					word = document[i].split(":")[0]
 					count = int(document[i].split(":")[1])
@@ -67,20 +67,25 @@ def readInput():
 
 def normalize():
 	for word in fisher_train_negative_dict:
-		fisher_train_negative_dict[word][0]/=(fisher_count_negative[0] + 2*K)
-		fisher_train_negative_dict[word][1]/=(fisher_count_negative[1] + 2*K)
+		fisher_train_negative_dict[word][0]/=(fisher_count_negative[0] + len(fisher_train_negative_dict)*K)
+		fisher_train_negative_dict[word][1]/=(fisher_count_negative[1] + len(fisher_train_negative_dict)*K)
 
 	for word in fisher_train_positive_dict:
-		fisher_train_positive_dict[word][0]/=(fisher_count_positive[0] + 2*K)
-		fisher_train_positive_dict[word][1]/=(fisher_count_positive[1] + 2*K)
+		fisher_train_positive_dict[word][0]/=(fisher_count_positive[0] + len(fisher_train_positive_dict)*K)
+		fisher_train_positive_dict[word][1]/=(fisher_count_positive[1] + len(fisher_train_positive_dict)*K)
 
 	for word in movie_train_negative_dict:
-		movie_train_negative_dict[word][0]/=(movie_count_negative[0] + 2*K)
-		movie_train_negative_dict[word][1]/=(movie_count_negative[1] + 2*K)
+		movie_train_negative_dict[word][0]/=(movie_count_negative[0] + len(movie_train_negative_dict)*K)
+		movie_train_negative_dict[word][1]/=(movie_count_negative[1] + len(movie_train_negative_dict)*K)
 
 	for word in movie_train_positive_dict:
-		movie_train_positive_dict[word][0]/=(movie_count_positive[0] + 2*K)
-		movie_train_positive_dict[word][1]/=(movie_count_positive[1] + 2*K)
+		movie_train_positive_dict[word][0]/=(movie_count_positive[0] + len(movie_train_positive_dict)*K)
+		movie_train_positive_dict[word][1]/=(movie_count_positive[1] + len(movie_train_positive_dict)*K)
+
+	summ = 0.0
+	for key in movie_train_positive_dict:
+		summ+=movie_train_positive_dict[key][0]
+	print "sum: ",summ
 
 def classifyMultinomial():
 	with open('docdata/fisher_2topic/fisher_test_2topic.txt') as input_file:
@@ -89,8 +94,8 @@ def classifyMultinomial():
 		#loop through documents
 		for i, document in enumerate(input_file):
 			docCount += 1.0
-			probabilityPos = 0.0
-			probabilityNeg = 0.0
+			probabilityPos = log(0.5)
+			probabilityNeg = log(0.5)
 			document = document.split(" ")
 			label = int(document[0])
 			#loop through words in document
@@ -100,8 +105,12 @@ def classifyMultinomial():
 				for k in range(count):
 					if word in fisher_train_positive_dict:
 						probabilityPos += log(fisher_train_positive_dict[word][0])
+					else:
+						probabilityPos += log(K/(fisher_count_positive[0] + len(fisher_train_positive_dict)*K))
 					if word in fisher_train_negative_dict:
 						probabilityNeg += log(fisher_train_negative_dict[word][0])
+					else:
+						probabilityNeg += log(K/(fisher_count_negative[0] + len(fisher_train_negative_dict)*K))
 			isClassifiedPositive = probabilityPos > probabilityNeg
 			if isClassifiedPositive and label==1:
 				numcCorrectFisher+=1.0
@@ -115,8 +124,8 @@ def classifyMultinomial():
 		#loop through documents
 		for i, document in enumerate(input_file):
 			docCount += 1.0
-			probabilityPos = 0.0
-			probabilityNeg = 0.0
+			probabilityPos = log(0.5)
+			probabilityNeg = log(0.5)
 			document = document.split(" ")
 			label = int(document[0])
 			#loop through words in document
@@ -126,8 +135,12 @@ def classifyMultinomial():
 				for k in range(count):
 					if word in movie_train_positive_dict:
 						probabilityPos += log(movie_train_positive_dict[word][0])
+					else:
+						probabilityPos += log(K/(movie_count_positive[0] + len(movie_train_positive_dict)*K))
 					if word in movie_train_negative_dict:
 						probabilityNeg += log(movie_train_negative_dict[word][0])
+					else:
+						probabilityNeg += log(K/(movie_count_negative[0] + len(movie_train_negative_dict)*K))
 			isClassifiedPositive = probabilityPos > probabilityNeg
 			if isClassifiedPositive and label==1:
 				numcCorrectMovie+=1.0
@@ -180,8 +193,8 @@ def classifyBernoulli():
 		#loop through documents
 		for i, document in enumerate(input_file):
 			docCount += 1.0
-			probabilityPos = 0.0
-			probabilityNeg = 0.0
+			probabilityPos = log(0.5)
+			probabilityNeg = log(0.5)
 			items = document.split(" ")
 			label = int(items[0])
 			#loop through words in document
