@@ -57,35 +57,31 @@ def readInput():
 						if word not in movie_train_negative_dict:
 							movie_train_negative_dict[word]=[K,K]
 						movie_train_negative_dict[word][0]+=count
-						movie_train_negative_dict[word][1]+=1
+						movie_train_negative_dict[word][1]+=1.0
 					elif label==1:
 						movie_count_positive[0]+=count
 						if word not in movie_train_positive_dict:
 							movie_train_positive_dict[word]=[K,K]
 						movie_train_positive_dict[word][0]+=count
-						movie_train_positive_dict[word][1]+=1
+						movie_train_positive_dict[word][1]+=1.0
 
 def normalize():
 	for word in fisher_train_negative_dict:
 		fisher_train_negative_dict[word][0]/=(fisher_count_negative[0] + len(fisher_train_negative_dict)*K)
-		fisher_train_negative_dict[word][1]/=(fisher_count_negative[1] + len(fisher_train_negative_dict)*K)
+		fisher_train_negative_dict[word][1]/=(fisher_count_negative[1] + 2*K)
 
 	for word in fisher_train_positive_dict:
 		fisher_train_positive_dict[word][0]/=(fisher_count_positive[0] + len(fisher_train_positive_dict)*K)
-		fisher_train_positive_dict[word][1]/=(fisher_count_positive[1] + len(fisher_train_positive_dict)*K)
+		fisher_train_positive_dict[word][1]/=(fisher_count_positive[1] + 2*K)
 
 	for word in movie_train_negative_dict:
 		movie_train_negative_dict[word][0]/=(movie_count_negative[0] + len(movie_train_negative_dict)*K)
-		movie_train_negative_dict[word][1]/=(movie_count_negative[1] + len(movie_train_negative_dict)*K)
+		movie_train_negative_dict[word][1]/=(movie_count_negative[1] + 2*K)
 
 	for word in movie_train_positive_dict:
 		movie_train_positive_dict[word][0]/=(movie_count_positive[0] + len(movie_train_positive_dict)*K)
-		movie_train_positive_dict[word][1]/=(movie_count_positive[1] + len(movie_train_positive_dict)*K)
+		movie_train_positive_dict[word][1]/=(movie_count_positive[1] + 2*K)
 
-	summ = 0.0
-	for key in movie_train_positive_dict:
-		summ+=movie_train_positive_dict[key][0]
-	print "sum: ",summ
 
 def classifyMultinomial():
 	with open('docdata/fisher_2topic/fisher_test_2topic.txt') as input_file:
@@ -116,8 +112,7 @@ def classifyMultinomial():
 				numcCorrectFisher+=1.0
 			elif not isClassifiedPositive and label==-1:
 				numcCorrectFisher+=1.0
-		print docCount
-		print numcCorrectFisher/docCount
+		print "Multinomial fisher: ",numcCorrectFisher/docCount
 	with open('docdata/movie_review/rt-test.txt') as input_file:
 		numcCorrectMovie = 0.0
 		docCount = 0.0
@@ -146,8 +141,7 @@ def classifyMultinomial():
 				numcCorrectMovie+=1.0
 			elif not isClassifiedPositive and label==-1:
 				numcCorrectMovie+=1.0
-		print docCount
-		print numcCorrectMovie/docCount
+		print "Multinomial movie: ",numcCorrectMovie/docCount
 
 def classifyBernoulli():
 	with open('docdata/fisher_2topic/fisher_test_2topic.txt') as input_file:
@@ -158,8 +152,8 @@ def classifyBernoulli():
 		#loop through documents
 		for i, document in enumerate(input_file):
 			docCount += 1.0
-			probabilityPos = 0.0
-			probabilityNeg = 0.0
+			probabilityPos = log(0.5)
+			probabilityNeg = log(0.5)
 			items = document.split(" ")
 			label = int(items[0])
 			#loop through words in document
@@ -167,14 +161,18 @@ def classifyBernoulli():
 			for j in range(1,len(items)):
 				word = items[j].split(":")[0]
 				docWords.append(word)
-			for word in vocabularyNeg:
+			for word in list(set(vocabularyNeg+docWords)):
 				if word in docWords and word in fisher_train_negative_dict:
 					probabilityNeg+=log(fisher_train_negative_dict[word][1])
+				elif word in docWords and word not in movie_train_negative_dict:
+					probabilityNeg+=log(K/(fisher_count_negative[1] + 2*K))
 				elif word not in docWords and word in fisher_train_negative_dict:
 					probabilityNeg+=log(1-fisher_train_negative_dict[word][1])
-			for word in vocabularyPos:
+			for word in list(set(vocabularyPos+docWords)):
 				if word in docWords and word in fisher_train_positive_dict:
 					probabilityPos+=log(fisher_train_positive_dict[word][1])
+				elif word in docWords and word not in fisher_train_positive_dict:
+					probabilityPos+=log(K/(fisher_count_positive[1] + 2*K))
 				elif word not in docWords and word in fisher_train_positive_dict:
 					probabilityPos+=log(1-fisher_train_positive_dict[word][1])
 
@@ -183,9 +181,8 @@ def classifyBernoulli():
 				numcCorrectFisher+=1.0
 			elif not isClassifiedPositive and label==-1:
 				numcCorrectFisher+=1.0
-		print docCount
-		print "bernoulli: ",numcCorrectFisher/docCount
-	with open('docdata/movie_review/rt-train.txt') as input_file:
+		print "Bernoulli fisher: ",numcCorrectFisher/docCount
+	with open('docdata/movie_review/rt-test.txt') as input_file:
 		numCorrectMovie = 0.0
 		docCount = 0.0
 		vocabularyNeg = movie_train_negative_dict.keys()
@@ -202,14 +199,18 @@ def classifyBernoulli():
 			for j in range(1,len(items)):
 				word = items[j].split(":")[0]
 				docWords.append(word)
-			for word in vocabularyNeg:
+			for word in list(set(vocabularyNeg+docWords)):
 				if word in docWords and word in movie_train_negative_dict:
 					probabilityNeg+=log(movie_train_negative_dict[word][1])
+				elif word in docWords and word not in movie_train_negative_dict:
+					probabilityNeg+=log(K/(movie_count_negative[1] + 2*K))
 				elif word not in docWords and word in movie_train_negative_dict:
 					probabilityNeg+=log(1-movie_train_negative_dict[word][1])
-			for word in vocabularyPos:
+			for word in list(set(vocabularyPos+docWords)):
 				if word in docWords and word in movie_train_positive_dict:
 					probabilityPos+=log(movie_train_positive_dict[word][1])
+				elif word in docWords and word not in movie_train_positive_dict:
+					probabilityPos+=log(K/(movie_count_positive[1] + 2*K))
 				elif word not in docWords and word in movie_train_positive_dict:
 					probabilityPos+=log(1-movie_train_positive_dict[word][1])
 
@@ -218,8 +219,7 @@ def classifyBernoulli():
 				numCorrectMovie+=1.0
 			elif not isClassifiedPositive and label==-1:
 				numCorrectMovie+=1.0
-		print docCount
-		print "bernoulli: ",numCorrectMovie/docCount
+		print "Bernoulli movie: ",numCorrectMovie/docCount
 
 readInput()
 normalize()
