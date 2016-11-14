@@ -16,6 +16,11 @@ movie_train_positive_dict = {} #[word count, doc count]
 movie_count_negative = [0.0,0.0] #wordcount for this class, doc count for this class
 movie_count_positive = [0.0,0.0] #wordcount for this class, doc count for this class
 
+confusion_fisher_bernouilli  = [0.0,0.0,0.0,0.0] #[TP,FN,FP,TN] 
+confusion_fisher_multinomial = [0.0,0.0,0.0,0.0]
+confusion_movie_bernouilli   = [0.0,0.0,0.0,0.0]
+confusion_movie_multinomial  = [0.0,0.0,0.0,0.0]
+
 def readInput():
 	with open('docdata/fisher_2topic/fisher_train_2topic.txt') as input_file:
 			for j, document in enumerate(input_file):
@@ -176,12 +181,27 @@ def classifyBernoulli():
 				elif word not in docWords and word in fisher_train_positive_dict:
 					probabilityPos+=log(1-fisher_train_positive_dict[word][1])
 
+			#[TP,FN,FP,TN] 
 			isClassifiedPositive = probabilityPos > probabilityNeg
-			if isClassifiedPositive and label==1:
-				numcCorrectFisher+=1.0
-			elif not isClassifiedPositive and label==-1:
-				numcCorrectFisher+=1.0
+			if isClassifiedPositive:
+				if label==1:
+					numcCorrectFisher+=1.0
+					confusion_fisher_bernouilli[0]+=1.0
+				else:
+					confusion_fisher_bernouilli[1]+=1.0
+			elif not isClassifiedPositive:
+				if label==-1:
+					confusion_fisher_bernouilli[3]+=1.0
+					numcCorrectFisher+=1.0
+				else:
+					confusion_fisher_bernouilli[2]+=1.0
+		for i in range(4):
+			confusion_fisher_bernouilli[i]/=49.0
 		print "Bernoulli fisher: ",numcCorrectFisher/docCount
+		print "Bernoulli fisher confusion: "
+		print confusion_fisher_bernouilli[0],confusion_fisher_bernouilli[1]
+		print confusion_fisher_bernouilli[2],confusion_fisher_bernouilli[3]
+
 	with open('docdata/movie_review/rt-test.txt') as input_file:
 		numCorrectMovie = 0.0
 		docCount = 0.0

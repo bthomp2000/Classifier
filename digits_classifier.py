@@ -15,12 +15,16 @@ results = [0]*10
 testcount = [0.0] * 10
 confusion = []
 pairs = []
+prototypicals = [] #[class][min_index,min_value,max_index,max_value]
+testImages = []
 def readInput():
 	with open('digitdata/traininglabels') as input_file:
 			for i, line in enumerate(input_file):
 				line = line.rstrip()
 				for label in line:
 					traininglabels.append(int(label))
+			for i in range(10):
+				prototypicals.append(list([0,9999999.0,0,-999999.9]))
 
 	with open('digitdata/trainingimages') as input_file:
 		imageNum = 0
@@ -50,10 +54,14 @@ def readTestInput():
 
 	with open('digitdata/testimages') as input_file:
 		imageNum = 0
-		classProb = [log(0.1)] * 10
+		classProb = [0.0] * 10
+		for i in range(10):
+			classProb[i]=float(classCount[i]/5000.0)
+		testimage = []
 		for intputLineNum, line in enumerate(input_file):
 			currRow = intputLineNum % 28
 			imageNum = int(intputLineNum / 28)
+			testimage.append(line)
 			for currCol in range(len(line)):
 				feature = line[currCol]
 				for i in range(len(classProb)):
@@ -64,7 +72,22 @@ def readTestInput():
 					elif feature == " ":
 						classProb[i]+=log(trainingData[i][currRow][currCol][2])
 			if currRow == 27:
+				testImages.append(testimage)
+				testimage=list()
+				# [class][min_index,min_value,max_index,max_value]
+				true_label = testlabels[imageNum]
+				# print true_label
+				prob_label = classProb[true_label]
+				# print prob_label
+				if prob_label<prototypicals[true_label][1]:
+					prototypicals[true_label][0]=imageNum
+					prototypicals[true_label][1]=prob_label
+				if prob_label>prototypicals[true_label][3]:
+					prototypicals[true_label][2]=imageNum
+					prototypicals[true_label][3]=prob_label
 				maxIndex = classProb.index(max(classProb))
+				if imageNum==58:
+					print "max Index: ",maxIndex
 				resultlabels.append(int(maxIndex))
 				classProb = [1] * 10
 
@@ -95,21 +118,29 @@ def numCorrect():
 	for i in range(len(resultlabels)):
 		testcount[testlabels[i]]+=1.0
 		if resultlabels[i] == testlabels[i]:
-			results[testlabels[i]]+=1.0
-		confusion[testlabels[i]][resultlabels[i]]+=1.0
+			resultlabels[testlabels[i]]+=1.0
+		confusion[testlabels[i]][int(resultlabels[i])]+=1.0
 
 	for i in range(len(testcount)):
 		results[i]/=testcount[i]
 		for j in range(10):
 			confusion[i][j]/=testcount[i]
-	print results
-	print testcount
+	
+	print "results for each class: "
+	for i in range(len(results)):
+		print format(results[i], '2.3f'),
+	print ''
+	# print testcount
 	for i in range(10):
 		for j in range(10):
 			value = confusion[i][j]
 			value=format(value, '2.3f')
 			print value,
 		print ''
+	for i in range(len(resultlabels)):
+		if resultlabels[i]==testlabels[i]:
+			count+=1
+	print "total accuracy: ",count/1000.0
 
 def oddsRatios():
 	for k in range(4):
@@ -166,7 +197,21 @@ def printGraphics():
 	while True:
 		x = 0
 
-
+#[class][min_index,min_value,max_index,max_value]
+def prototypicalResults():
+	for i in range(10):
+		minIndex = int(prototypicals[i][0])
+		maxIndex = int(prototypicals[i][2])
+		print "Class ",i,": lowest probability (image number ",minIndex,")"
+		for line in testImages[minIndex]:
+			line = line.rstrip()
+			print line
+		print ''
+		print "Highest probability (image number ",maxIndex,")"
+		for line in testImages[maxIndex]:
+			line = line.rstrip()
+			print line
+		print ''
 initArray()
 readInput()
 normalize()
@@ -174,6 +219,8 @@ readTestInput()
 numCorrect()
 oddsRatios()
 printGraphics()
-print resultlabels
-print trainingData[2]
+prototypicalResults()
+print prototypicals
+# print resultlabels
+# print trainingData[2]
 # print classCount
